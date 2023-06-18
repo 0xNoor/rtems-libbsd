@@ -909,6 +909,32 @@ class if_mve(builder.Module):
         )
 
 #
+# GENET Ethernet driver
+#
+
+class if_genet(builder.Module):
+
+    def __init__(self, manager):
+        super(if_genet, self).__init__(manager, type(self).__name__)
+
+
+    def generate(self):
+        mm = self.manager
+        self.addRTEMSKernelSourceFiles(
+            [
+                'sys/arm64/broadcom/genet/if_genet.c',
+            ],
+            mm.generator['source']()
+        )
+        self.addKernelSpaceHeaderFiles(
+            [
+
+
+            ]
+
+        )
+
+#
 # USB
 #
 class dev_usb(builder.Module):
@@ -1571,6 +1597,7 @@ class dev_net(builder.Module):
         self.addRTEMSKernelSourceFiles(
             [
                 'sys/dev/mii/ksz8091rnb_50MHz.c',
+                'sys/arm64/broadcom/genet/if_genet.c',
             ],
             mm.generator['source']()
         )
@@ -5487,6 +5514,7 @@ def load(mm):
     mm.addModule(pinmux(mm))
     mm.addModule(if_mve(mm))
     mm.addModule(display(mm))
+    mm.addModule(if_genet(mm))
 
     mm.addModule(dev_usb(mm))
     mm.addModule(dev_usb_controller(mm))
