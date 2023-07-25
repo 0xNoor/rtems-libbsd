@@ -1571,6 +1571,7 @@ class dev_net(builder.Module):
         self.addRTEMSKernelSourceFiles(
             [
                 'sys/dev/mii/ksz8091rnb_50MHz.c',
+                'arm64/broadcom/genet/if_genet.c'
             ],
             mm.generator['source']()
         )
