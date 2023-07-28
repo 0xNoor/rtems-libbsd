@@ -64,15 +64,19 @@ __FBSDID("$FreeBSD$");
 
 #include <machine/bus.h>
 
+#ifndef __rtems__
 #include <dev/ofw/ofw_bus.h>
 #include <dev/ofw/ofw_bus_subr.h>
+#endif /* __rtems__ */
 
 #define __BIT(_x)	(1 << (_x))
 #include "if_genetreg.h"
 
+#ifndef __rtems__
 #include <dev/mii/mii.h>
 #include <dev/mii/miivar.h>
 #include <dev/mii/mii_fdt.h>
+#endif /* __rtems__ */
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -102,6 +106,7 @@ __FBSDID("$FreeBSD$");
 static int gen_rx_batch = 16 /* RX_BATCH_DEFAULT */;
 TUNABLE_INT("hw.gen.rx_batch", &gen_rx_batch);
 
+#ifndef __rtems__
 static struct ofw_compat_data compat_data[] = {
 	{ "brcm,genet-v1",		1 },
 	{ "brcm,genet-v2",		2 },
@@ -110,6 +115,7 @@ static struct ofw_compat_data compat_data[] = {
 	{ "brcm,genet-v5",		5 },
 	{ NULL,				0 }
 };
+#endif /* __rtems__ */
 
 enum {
 	_RES_MAC,		/* what to call this? */
@@ -157,7 +163,9 @@ struct gen_softc {
 	if_t			ifp;
 	device_t		dev;
 	device_t		miibus;
+#ifndef __rtems__
 	mii_contype_t		phy_mode;
+#endif /* __rtems__ */
 
 	struct callout		stat_ch;
 	struct task		link_task;
@@ -218,12 +226,13 @@ static void gen_tick(void *softc);
 static int
 gen_probe(device_t dev)
 {
+#ifndef __rtems__
 	if (!ofw_bus_status_okay(dev))
 		return (ENXIO);
 
 	if (ofw_bus_search_compatible(dev, compat_data)->ocd_data == 0)
 		return (ENXIO);
-
+#endif /* __rtems__ */
 	device_set_desc(dev, "RPi4 Gigabit Ethernet");
 	return (BUS_PROBE_DEFAULT);
 }
@@ -238,7 +247,9 @@ gen_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
+#ifndef __rtems__
 	sc->type = ofw_bus_search_compatible(dev, compat_data)->ocd_data;
+#endif /* __rtems__ */
 
 	if (bus_alloc_resources(dev, gen_spec, sc->res) != 0) {
 		device_printf(dev, "cannot allocate resources for device\n");
@@ -311,6 +322,7 @@ gen_attach(device_t dev)
 	if_setcapenable(sc->ifp, if_getcapabilities(sc->ifp));
 
 	/* Attach MII driver */
+#ifndef __rtems__
 	error = mii_attach(dev, &sc->miibus, sc->ifp, gen_media_change,
 	    gen_media_status, BMSR_DEFCAPMASK, MII_PHY_ANY, MII_OFFSET_ANY,
 	    MIIF_DOPAUSE);
@@ -318,6 +330,7 @@ gen_attach(device_t dev)
 		device_printf(dev, "cannot attach PHY\n");
 		goto fail;
 	}
+#endif /* __rtems__ */
 
 	/* If address was not found, create one based on the hostid and name. */
 	if (eaddr_found == 0)
@@ -356,6 +369,7 @@ gen_destroy(struct gen_softc *sc)
 static int
 gen_get_phy_mode(device_t dev)
 {
+#ifndef __rtems__
 	struct gen_softc *sc;
 	phandle_t node;
 	mii_contype_t type;
@@ -379,6 +393,7 @@ gen_get_phy_mode(device_t dev)
 	}
 
 	return (error);
+#endif /* __rtems__ */
 }
 
 static bool
@@ -786,9 +801,10 @@ gen_init_locked(struct gen_softc *sc)
 
 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
 		return;
-
+#ifndef __rtems__
 	if (sc->phy_mode == MII_CONTYPE_RGMII ||
 	    sc->phy_mode == MII_CONTYPE_RGMII_RXID)
+#endif /* __rtems__ */
 		WR4(sc, GENET_SYS_PORT_CTRL,
 		    GENET_SYS_PORT_MODE_EXT_GPHY);
 
@@ -1429,7 +1445,9 @@ gen_ioctl(if_t ifp, u_long cmd, caddr_t data)
 
 	case SIOCSIFMEDIA:
 	case SIOCGIFMEDIA:
+#ifndef __rtems__
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, cmd);
+#endif /* __rtems__ */
 		break;
 
 	case SIOCSIFCAP:
@@ -1555,7 +1573,7 @@ gen_update_link_locked(struct gen_softc *sc)
 	if ((if_getdrvflags(sc->ifp) & IFF_DRV_RUNNING) == 0)
 		return;
 	mii = device_get_softc(sc->miibus);
-
+#ifndef __rtems__
 	if ((mii->mii_media_status & (IFM_ACTIVE | IFM_AVALID)) ==
 	    (IFM_ACTIVE | IFM_AVALID)) {
 		switch (IFM_SUBTYPE(mii->mii_media_active)) {
@@ -1578,6 +1596,7 @@ gen_update_link_locked(struct gen_softc *sc)
 		}
 	} else
 		sc->link = 0;
+#endif /* __rtems__ */
 
 	if (sc->link == 0)
 		return;
@@ -1586,8 +1605,10 @@ gen_update_link_locked(struct gen_softc *sc)
 	val &= ~GENET_EXT_RGMII_OOB_OOB_DISABLE;
 	val |= GENET_EXT_RGMII_OOB_RGMII_LINK;
 	val |= GENET_EXT_RGMII_OOB_RGMII_MODE_EN;
+#ifndef __rtems__
 	if (sc->phy_mode == MII_CONTYPE_RGMII)
 		val |= GENET_EXT_RGMII_OOB_ID_MODE_DISABLE;
+#endif /* __rtems__ */
 	WR4(sc, GENET_EXT_RGMII_OOB_CTRL, val);
 
 	val = RD4(sc, GENET_UMAC_CMD);
@@ -1626,11 +1647,12 @@ gen_media_status(if_t ifp, struct ifmediareq *ifmr)
 
 	sc = if_getsoftc(ifp);
 	mii = device_get_softc(sc->miibus);
-
 	GEN_LOCK(sc);
+#ifndef __rtems__
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
+#endif /* __rtems__ */
 	GEN_UNLOCK(sc);
 }
 
@@ -1672,7 +1694,9 @@ static driver_t gen_driver = {
 
 static devclass_t gen_devclass;
 
+#ifndef __rtems__
 DRIVER_MODULE(genet, simplebus, gen_driver, gen_devclass, 0, 0);
 DRIVER_MODULE(miibus, genet, miibus_driver, miibus_devclass, 0, 0);
+#endif /* __rtems__ */
 MODULE_DEPEND(genet, ether, 1, 1, 1);
 MODULE_DEPEND(genet, miibus, 1, 1, 1);
